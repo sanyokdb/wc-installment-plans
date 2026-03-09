@@ -124,7 +124,12 @@ class WC_Installment_Frontend {
 							$is_active = $first_in_group;
 							$first_in_group = false;
 						?>
-							<div class="installment-plan <?php echo $is_active ? 'active' : ''; ?>" data-total="<?php echo esc_attr( $total ); ?>" data-monthly="<?php echo esc_attr( $monthly ); ?>" data-plan-id="<?php echo esc_attr( $plan_id ); ?>">
+							<div class="installment-plan <?php echo $is_active ? 'active' : ''; ?>"
+								data-total="<?php echo esc_attr( $total ); ?>"
+								data-monthly="<?php echo esc_attr( $monthly ); ?>"
+								data-original-total="<?php echo esc_attr( $total ); ?>"
+								data-original-monthly="<?php echo esc_attr( $monthly ); ?>"
+								data-plan-id="<?php echo esc_attr( $plan_id ); ?>">
 								<div class="installment-plan-left">
 									<?php if ( $logo_url ) : ?>
 										<div class="installment-plan-logo">
@@ -136,11 +141,7 @@ class WC_Installment_Frontend {
 									</div>
 								</div>
 								<div class="installment-plan-price">
-									<?php if ( $is_variable ) : ?>
-										<span class="installment-variation-placeholder"><?php esc_html_e( 'Выберите вариацию', 'wc-installment-plans' ); ?></span>
-									<?php else : ?>
-										<?php echo wp_kses_post( wc_price( $monthly ) ); ?>/месяц
-									<?php endif; ?>
+									<?php echo wp_kses_post( wc_price( $monthly ) ); ?>/месяц
 								</div>
 							</div>
 						<?php endforeach; ?>
@@ -152,11 +153,7 @@ class WC_Installment_Frontend {
 			<div class="installment-total">
 				<span class="installment-total-label">Общая сумма:</span>
 				<span class="installment-total-price">
-					<?php if ( $is_variable ) : ?>
-						<?php echo wp_kses_post( wc_price( $min_price ) ); ?> — <?php echo wp_kses_post( wc_price( $max_price ) ); ?>
-					<?php else : ?>
-						<?php echo wp_kses_post( wc_price( $default_total ) ); ?>
-					<?php endif; ?>
+					<?php echo wp_kses_post( wc_price( $default_total ) ); ?>
 				</span>
 			</div>
 		</div>

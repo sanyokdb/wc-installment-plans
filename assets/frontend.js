@@ -92,19 +92,20 @@ jQuery(document).ready(function($) {
 
 	// Сброс блока рассрочки при отмене выбора вариации
 	function resetInstallmentBlock($section) {
-		var placeholder = '<span class="installment-variation-placeholder">Выберите вариацию</span>';
-		var minPrice = $section.data('min-price');
-		var maxPrice = $section.data('max-price');
+		$section.find('.installment-plan').each(function() {
+			var $plan = $(this);
+			var originalTotal = $plan.data('original-total');
+			var originalMonthly = $plan.data('original-monthly');
+			if (originalTotal !== undefined) {
+				$plan.attr('data-total', originalTotal).data('total', originalTotal);
+			}
+			if (originalMonthly !== undefined) {
+				$plan.attr('data-monthly', originalMonthly).data('monthly', originalMonthly);
+				$plan.find('.installment-plan-price').html(formatPrice(originalMonthly) + '/месяц');
+			}
+		});
 
-		$section.find('.installment-plan-price').html(placeholder);
-
-		if (minPrice && maxPrice) {
-			$section.find('.installment-total-price').html(
-				formatPrice(minPrice) + ' — ' + formatPrice(maxPrice)
-			);
-		} else {
-			$section.find('.installment-total-price').html(placeholder);
-		}
+		updateTotalPriceFromActivePlan($section);
 	}
 
 	// Обработка вариативных товаров
