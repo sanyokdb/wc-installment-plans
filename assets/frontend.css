@@ -1,0 +1,203 @@
+.installment-section {
+	padding: 20px;
+	background: #ffffff;
+	border-radius: 15px;
+}
+
+.installment-title {
+	margin: 0 0 10px 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: #222;
+}
+
+/* Вкладки месяцев */
+.installment-months-tabs {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 15px;
+	flex-wrap: wrap;
+}
+
+.installment-month-tab {
+	flex: 1;
+	padding: 8px 16px;
+	background: #f5f5f5;
+	max-width: 100px;
+	border-radius: 6px !important;
+	font-weight: 600;
+	font-size: 13px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	border: none;
+}
+
+.installment-month-tab:hover {
+	background: #efefef;
+	border-color: #999;
+}
+
+.installment-month-tab.active {
+	background: #ff8c00 !important;
+	color: #fff !important;
+	cursor: default;
+}
+
+/* Планы */
+.installment-plans {
+	margin-bottom: 20px;
+}
+
+.installment-plans-group {
+	display: none;
+}
+
+.installment-plans-group.active {
+	display: block;
+	animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.installment-plan {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 10px;
+	margin-bottom: 10px;
+	background: #fff;
+	border: 2px solid #e8e8e8;
+	border-radius: 6px;
+	transition: all 0.2s ease;
+	cursor: pointer;
+}
+
+.installment-plan:hover {
+	border-color: #d3d3d3;
+	box-shadow: 0 2px 8px rgba(211, 211, 211, 0.2);
+}
+
+.installment-plan.active {
+	border-color: #ff8c00;
+	border-width: 2px;
+	background: #fff;
+	box-shadow: 0 2px 12px rgba(255, 140, 0, 0.15);
+}
+
+.installment-plan:last-child {
+	margin-bottom: 0;
+}
+
+.installment-plan-left {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex: 1;
+}
+
+.installment-plan-logo {
+	width: 90px;
+	padding: 0 4px;
+	height: 36px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #f9f9f9;
+	border-radius: 4px;
+}
+
+.installment-plan-logo img {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+}
+
+.installment-plan-name {
+	font-weight: 600;
+	font-size: 14px;
+	display: none;
+}
+
+.installment-plan-price {
+	font-size: 15px;
+	color: #ff8c00;
+	font-weight: 700;
+	white-space: nowrap;
+	text-align: right;
+}
+
+/* Общая сумма */
+.installment-total {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 10px;
+	padding-top: 15px;
+	border-top: 1px solid #e8e8e8;
+	margin-top: 15px;
+}
+
+.installment-total-label {
+	font-weight: 600;
+	font-size: 14px;
+	color: #666;
+}
+
+.installment-total-price {
+	font-weight: 700;
+	font-size: 16px;
+	color: #222;
+}
+
+@media (max-width: 768px) {
+	.installment-section {
+		padding: 15px;
+		margin: 20px 0;
+	}
+
+	.installment-title {
+		font-size: 14px;
+		margin-bottom: 15px;
+	}
+
+	.installment-months-tabs {
+		gap: 6px;
+		margin-bottom: 15px;
+	}
+
+	.installment-month-tab {
+		padding: 6px 12px;
+		font-size: 12px;
+	}
+
+	.installment-plan {
+		padding: 12px;
+		margin-bottom: 8px;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.installment-plan-left {
+		width: 100%;
+		margin-bottom: 10px;
+	}
+
+	.installment-plan-price {
+		width: 100%;
+		text-align: right;
+	}
+
+	.installment-total {
+		flex-direction: column;
+		margin-top: 15px;
+		padding-top: 15px;
+	}
+}

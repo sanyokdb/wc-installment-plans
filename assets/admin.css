@@ -1,0 +1,22 @@
+.wc-installment-section {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.wc-installment-section h3 {
+    margin: 0 0 20px 0;
+}
+
+.plan-card {
+    border: 2px solid #ddd;
+    padding: 15px;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.plan-card:hover {
+    border-color: #8224e3;
+    box-shadow: 0 2px 8px rgba(130, 36, 227, 0.15);
+}
