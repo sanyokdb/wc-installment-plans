@@ -65,4 +65,83 @@ jQuery(document).ready(function($) {
 			maximumFractionDigits: 0
 		}).format(price);
 	}
+
+	// Обновление блока рассрочки после выбора вариации
+	function updateInstallmentBlock($section, data) {
+		var plans = data.plans;
+
+		$section.find('.installment-plans-group').each(function() {
+			var month = String($(this).data('month'));
+			if (!plans[month]) {
+				return;
+			}
+
+			$(this).find('.installment-plan').each(function(index) {
+				if (!plans[month][index]) {
+					return;
+				}
+				var planData = plans[month][index];
+				$(this).attr('data-total', planData.total);
+				$(this).attr('data-monthly', planData.monthly);
+				$(this).find('.installment-plan-price').html(formatPrice(planData.monthly) + '/месяц');
+			});
+		});
+
+		$section.find('.installment-total-price').html(formatPrice(data.default_total));
+	}
+
+	// Сброс блока рассрочки при отмене выбора вариации
+	function resetInstallmentBlock($section) {
+		var placeholder = '<span class="installment-variation-placeholder">Выберите вариацию</span>';
+		var minPrice = $section.data('min-price');
+		var maxPrice = $section.data('max-price');
+
+		$section.find('.installment-plan-price').html(placeholder);
+
+		if (minPrice && maxPrice) {
+			$section.find('.installment-total-price').html(
+				formatPrice(minPrice) + ' — ' + formatPrice(maxPrice)
+			);
+		} else {
+			$section.find('.installment-total-price').html(placeholder);
+		}
+	}
+
+	// Обработка вариативных товаров
+	var $variableSection = $('.installment-section[data-is-variable="1"]');
+	if ($variableSection.length) {
+		var $form = $('form.variations_form');
+
+		$form.on('found_variation', function(event, variation) {
+			var variationPrice = parseFloat(variation.display_price);
+			if (!variationPrice) {
+				return;
+			}
+
+			var productId = $variableSection.data('product-id');
+
+			$.ajax({
+				url: wcInstallmentAjax.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'update_installment_variation',
+					nonce: wcInstallmentAjax.nonce,
+					product_id: productId,
+					price: variationPrice
+				},
+				success: function(response) {
+					if (response.success) {
+						updateInstallmentBlock($variableSection, response.data);
+					}
+				},
+				error: function() {
+					resetInstallmentBlock($variableSection);
+				}
+			});
+		});
+
+		$form.on('reset_data', function() {
+			resetInstallmentBlock($variableSection);
+		});
+	}
 });

@@ -157,6 +157,14 @@
 	color: #222;
 }
 
+/* Placeholder text for variable products without selected variation */
+.installment-variation-placeholder {
+	font-weight: 500;
+	font-size: 13px;
+	color: #999;
+	font-style: italic;
+}
+
 @media (max-width: 768px) {
 	.installment-section {
 		padding: 15px;
