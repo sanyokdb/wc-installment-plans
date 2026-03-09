@@ -81,13 +81,13 @@ jQuery(document).ready(function($) {
 					return;
 				}
 				var planData = plans[month][index];
-				$(this).attr('data-total', planData.total);
-				$(this).attr('data-monthly', planData.monthly);
+				$(this).attr('data-total', planData.total).data('total', planData.total);
+				$(this).attr('data-monthly', planData.monthly).data('monthly', planData.monthly);
 				$(this).find('.installment-plan-price').html(formatPrice(planData.monthly) + '/месяц');
 			});
 		});
 
-		$section.find('.installment-total-price').html(formatPrice(data.default_total));
+		updateTotalPriceFromActivePlan($section);
 	}
 
 	// Сброс блока рассрочки при отмене выбора вариации

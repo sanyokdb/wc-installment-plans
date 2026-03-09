@@ -43,7 +43,7 @@ function wc_installment_plans_init() {
 	WC_Installation_Plan::get_instance();
 
 	// Админка
-	if ( is_admin() ) {
+	if ( is_admin() && ! wp_doing_ajax() ) {
 		WC_Installment_Admin::get_instance();
 	} else {
 		WC_Installment_Frontend::get_instance();
