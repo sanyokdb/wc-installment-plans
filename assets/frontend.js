@@ -144,5 +144,55 @@ jQuery(document).ready(function($) {
 		$form.on('reset_data', function() {
 			resetInstallmentBlock($variableSection);
 		});
+
+		// Обработка дополнительных опций (соусы, степень прожарки и т.д.),
+		// которые изменяют отображаемую цену без смены вариации.
+		// Слушаем всю форму, так как поля дополнительных опций могут иметь
+		// разные селекторы в зависимости от используемого плагина.
+		var optionChangeTimer = null;
+		$form.on('change', function() {
+			clearTimeout(optionChangeTimer);
+			optionChangeTimer = setTimeout(function() {
+				// Читаем цену только если блок цены вариации виден
+				// (т.е. вариация уже выбрана и цена обновлена плагинами опций)
+				var $variationPriceWrap = $('.woocommerce-variation-price');
+				if (!$variationPriceWrap.length || !$variationPriceWrap.is(':visible')) {
+					return;
+				}
+
+				// Берём первый .amount внутри блока цены вариации
+				// (при наличии старой и новой цены — первый элемент является актуальной)
+				var $priceEl = $variationPriceWrap.find('.amount').first();
+				if (!$priceEl.length) {
+					return;
+				}
+
+				// Парсим цену: убираем все нецифровые символы.
+				// Подходит для UZS и других валют без десятичных знаков.
+				var digits = $priceEl.text().replace(/[^\d]/g, '');
+				var price = parseFloat(digits);
+				if (!price || price <= 0) {
+					return;
+				}
+
+				var productId = $variableSection.data('product-id');
+
+				$.ajax({
+					url: wcInstallmentAjax.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'update_installment_variation',
+						nonce: wcInstallmentAjax.nonce,
+						product_id: productId,
+						price: price
+					},
+					success: function(response) {
+						if (response.success) {
+							updateInstallmentBlock($variableSection, response.data);
+						}
+					}
+				});
+			}, 300);
+		});
 	}
 });
