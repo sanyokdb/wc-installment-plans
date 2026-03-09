@@ -187,7 +187,7 @@ class WC_Installment_Frontend {
 		}
 
 		$product = wc_get_product( $product_id );
-		if ( ! $product || ! $product->is_type( 'variable' ) ) {
+		if ( ! $product ) {
 			wp_send_json_error( [ 'message' => 'Invalid product' ] );
 			return;
 		}
