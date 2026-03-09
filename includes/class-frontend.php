@@ -17,6 +17,8 @@ class WC_Installment_Frontend {
 	public function __construct() {
 		add_action( 'woocommerce_share', [ $this, 'render_installments' ], 20 );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'wp_ajax_update_installment_variation', [ $this, 'ajax_update_installment_variation' ] );
+		add_action( 'wp_ajax_nopriv_update_installment_variation', [ $this, 'ajax_update_installment_variation' ] );
 	}
 
 	public function render_installments() {
@@ -44,7 +46,15 @@ class WC_Installment_Frontend {
 			return;
 		}
 
-		$price = (float) $product->get_price();
+		$is_variable = $product->is_type( 'variable' );
+
+		if ( $is_variable ) {
+			$min_price = (float) $product->get_variation_price( 'min' );
+			$max_price = (float) $product->get_variation_price( 'max' );
+			$price     = $min_price;
+		} else {
+			$price = (float) $product->get_price();
+		}
 
 		if ( ! $price ) {
 			return;
@@ -75,7 +85,7 @@ class WC_Installment_Frontend {
 		$default_commission = isset( $default_commissions[ $default_month ] ) ? floatval( $default_commissions[ $default_month ] ) : 0;
 		$default_total = $price + ( $price * $default_commission / 100 );
 		?>
-		<div class="installment-section" id="installment-section-<?php echo $product_id; ?>" data-price="<?php echo $price; ?>" data-default-plan="<?php echo $default_plan_id; ?>" data-default-month="<?php echo $default_month; ?>">
+		<div class="installment-section" id="installment-section-<?php echo esc_attr( $product_id ); ?>" data-price="<?php echo esc_attr( $price ); ?>" data-product-id="<?php echo esc_attr( $product_id ); ?>" data-default-plan="<?php echo esc_attr( $default_plan_id ); ?>" data-default-month="<?php echo esc_attr( $default_month ); ?>"<?php if ( $is_variable ) : ?> data-is-variable="1" data-min-price="<?php echo esc_attr( $min_price ); ?>" data-max-price="<?php echo esc_attr( $max_price ); ?>"<?php endif; ?>>
 			<h3 class="installment-title">Варианты рассрочки</h3>
 
 			<!-- Вкладки месяцев -->
@@ -114,7 +124,7 @@ class WC_Installment_Frontend {
 							$is_active = $first_in_group;
 							$first_in_group = false;
 						?>
-							<div class="installment-plan <?php echo $is_active ? 'active' : ''; ?>" data-total="<?php echo $total; ?>" data-monthly="<?php echo $monthly; ?>" data-plan-id="<?php echo $plan_id; ?>">
+							<div class="installment-plan <?php echo $is_active ? 'active' : ''; ?>" data-total="<?php echo esc_attr( $total ); ?>" data-monthly="<?php echo esc_attr( $monthly ); ?>" data-plan-id="<?php echo esc_attr( $plan_id ); ?>">
 								<div class="installment-plan-left">
 									<?php if ( $logo_url ) : ?>
 										<div class="installment-plan-logo">
@@ -126,7 +136,11 @@ class WC_Installment_Frontend {
 									</div>
 								</div>
 								<div class="installment-plan-price">
-									<?php echo wp_kses_post( wc_price( $monthly ) ); ?>/месяц
+									<?php if ( $is_variable ) : ?>
+										<span class="installment-variation-placeholder"><?php esc_html_e( 'Выберите вариацию', 'wc-installment-plans' ); ?></span>
+									<?php else : ?>
+										<?php echo wp_kses_post( wc_price( $monthly ) ); ?>/месяц
+									<?php endif; ?>
 								</div>
 							</div>
 						<?php endforeach; ?>
@@ -138,7 +152,11 @@ class WC_Installment_Frontend {
 			<div class="installment-total">
 				<span class="installment-total-label">Общая сумма:</span>
 				<span class="installment-total-price">
-					<?php echo wp_kses_post( wc_price( $default_total ) ); ?>
+					<?php if ( $is_variable ) : ?>
+						<?php echo wp_kses_post( wc_price( $min_price ) ); ?> — <?php echo wp_kses_post( wc_price( $max_price ) ); ?>
+					<?php else : ?>
+						<?php echo wp_kses_post( wc_price( $default_total ) ); ?>
+					<?php endif; ?>
 				</span>
 			</div>
 		</div>
@@ -153,6 +171,86 @@ class WC_Installment_Frontend {
 		if ( is_product() ) {
 			wp_enqueue_style( 'installment-frontend', WC_INSTALLMENT_PLANS_URL . 'assets/frontend.css', [], WC_INSTALLMENT_PLANS_VERSION );
 			wp_enqueue_script( 'installment-frontend', WC_INSTALLMENT_PLANS_URL . 'assets/frontend.js', [ 'jquery' ], WC_INSTALLMENT_PLANS_VERSION, true );
+			wp_localize_script( 'installment-frontend', 'wcInstallmentAjax', [
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'update_installment_variation' ),
+			] );
 		}
+	}
+
+	public function ajax_update_installment_variation() {
+		check_ajax_referer( 'update_installment_variation', 'nonce' );
+
+		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
+		$price      = isset( $_POST['price'] ) ? floatval( $_POST['price'] ) : 0;
+
+		if ( ! $product_id || $price <= 0 ) {
+			wp_send_json_error( [ 'message' => 'Invalid data' ] );
+			return;
+		}
+
+		$product = wc_get_product( $product_id );
+		if ( ! $product || ! $product->is_type( 'variable' ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid product' ] );
+			return;
+		}
+
+		$enabled = get_post_meta( $product_id, 'wc_installment_enabled', true );
+		if ( ! $enabled ) {
+			wp_send_json_error( [ 'message' => 'Installments not enabled for this product' ] );
+			return;
+		}
+
+		$plans       = get_post_meta( $product_id, 'wc_installment_plans', true );
+		$months_meta = get_post_meta( $product_id, 'wc_installment_months', true );
+
+		if ( empty( $plans ) || empty( $months_meta ) ) {
+			wp_send_json_error( [ 'message' => 'No plans found' ] );
+			return;
+		}
+
+		$available_months = [];
+		foreach ( $plans as $plan_id ) {
+			foreach ( [ '3', '6', '9', '12', '18', '24' ] as $month ) {
+				$key = $plan_id . '_' . $month;
+				if ( isset( $months_meta[ $key ] ) && ! in_array( $month, $available_months, true ) ) {
+					$available_months[] = $month;
+				}
+			}
+		}
+
+		usort( $available_months, [ $this, 'sort_months' ] );
+
+		$result_plans  = [];
+		$default_total = 0;
+
+		foreach ( $available_months as $month ) {
+			$result_plans[ $month ] = [];
+			foreach ( $plans as $plan_id ) {
+				$key = $plan_id . '_' . $month;
+				if ( ! isset( $months_meta[ $key ] ) ) {
+					continue;
+				}
+				$commissions = get_post_meta( $plan_id, 'wc_installment_commissions', true );
+				$commission  = isset( $commissions[ $month ] ) ? floatval( $commissions[ $month ] ) : 0;
+				$total       = $price + ( $price * $commission / 100 );
+				$monthly     = $total / intval( $month );
+
+				$result_plans[ $month ][] = [
+					'plan_id' => $plan_id,
+					'total'   => round( $total, 2 ),
+					'monthly' => round( $monthly, 2 ),
+				];
+			}
+		}
+
+		if ( ! empty( $available_months ) && ! empty( $result_plans[ $available_months[0] ] ) ) {
+			$default_total = $result_plans[ $available_months[0] ][0]['total'];
+		}
+
+		wp_send_json_success( [
+			'plans'         => $result_plans,
+			'default_total' => round( $default_total, 2 ),
+		] );
 	}
 }
