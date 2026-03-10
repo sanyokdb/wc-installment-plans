@@ -15,7 +15,7 @@ class WC_Installment_Frontend {
 	}
 
 	public function __construct() {
-		add_action( 'woocommerce_share', [ $this, 'render_installments' ], 20 );
+		add_action( 'woocommerce_single_product_summary', [ $this, 'render_installments' ], 20 );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'wp_ajax_update_installment_variation', [ $this, 'ajax_update_installment_variation' ] );
 		add_action( 'wp_ajax_nopriv_update_installment_variation', [ $this, 'ajax_update_installment_variation' ] );
