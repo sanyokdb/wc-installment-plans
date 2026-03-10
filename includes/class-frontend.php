@@ -218,8 +218,9 @@ class WC_Installment_Frontend {
 
 		usort( $available_months, [ $this, 'sort_months' ] );
 
-		$result_plans  = [];
-		$default_total = 0;
+		$result_plans      = [];
+		$default_total     = 0;
+		$commissions_cache = [];
 
 		foreach ( $available_months as $month ) {
 			$result_plans[ $month ] = [];
@@ -228,7 +229,10 @@ class WC_Installment_Frontend {
 				if ( ! isset( $months_meta[ $key ] ) ) {
 					continue;
 				}
-				$commissions = get_post_meta( $plan_id, 'wc_installment_commissions', true );
+				if ( ! isset( $commissions_cache[ $plan_id ] ) ) {
+					$commissions_cache[ $plan_id ] = get_post_meta( $plan_id, 'wc_installment_commissions', true );
+				}
+				$commissions = $commissions_cache[ $plan_id ];
 				$commission  = isset( $commissions[ $month ] ) ? floatval( $commissions[ $month ] ) : 0;
 				$total       = $price + ( $price * $commission / 100 );
 				$monthly     = $total / intval( $month );
