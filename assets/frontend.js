@@ -113,35 +113,75 @@ jQuery(document).ready(function($) {
 	if ($variableSection.length) {
 		var $form = $('form.variations_form');
 
+		// Кэш последней отправленной цены и контроллер текущего запроса
+		var lastInstallmentPrice = null;
+		var pendingRequest = null;
+
+		// Отправляет AJAX-запрос только если цена изменилась.
+		// Отменяет предыдущий запрос, если он ещё не завершился.
+		function sendInstallmentUpdate(price) {
+			if (price === lastInstallmentPrice) {
+				return;
+			}
+			lastInstallmentPrice = price;
+
+			if (pendingRequest) {
+				pendingRequest.abort();
+				pendingRequest = null;
+			}
+
+			var controller = new AbortController();
+			pendingRequest = controller;
+			var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
+
+			fetch(wcInstallmentAjax.ajaxUrl, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: new URLSearchParams({
+					action: 'update_installment_variation',
+					nonce: wcInstallmentAjax.nonce,
+					product_id: $variableSection.data('product-id'),
+					price: price
+				}).toString(),
+				signal: controller.signal
+			})
+			.then(function(response) {
+				if (!response.ok) {
+					throw new Error('HTTP ' + response.status);
+				}
+				return response.json();
+			})
+			.then(function(data) {
+				clearTimeout(timeoutId);
+				pendingRequest = null;
+				if (data.success) {
+					updateInstallmentBlock($variableSection, data.data);
+				}
+			})
+			.catch(function(err) {
+				clearTimeout(timeoutId);
+				pendingRequest = null;
+				// Abort errors are intentional (new request superseded this one)
+				if (err && err.name === 'AbortError') {
+					return;
+				}
+			});
+		}
+
 		$form.on('found_variation', function(event, variation) {
 			var variationPrice = parseFloat(variation.display_price);
 			if (!variationPrice) {
 				return;
 			}
-
-			var productId = $variableSection.data('product-id');
-
-			$.ajax({
-				url: wcInstallmentAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'update_installment_variation',
-					nonce: wcInstallmentAjax.nonce,
-					product_id: productId,
-					price: variationPrice
-				},
-				success: function(response) {
-					if (response.success) {
-						updateInstallmentBlock($variableSection, response.data);
-					}
-				},
-				error: function() {
-					resetInstallmentBlock($variableSection);
-				}
-			});
+			sendInstallmentUpdate(variationPrice);
 		});
 
 		$form.on('reset_data', function() {
+			lastInstallmentPrice = null;
+			if (pendingRequest) {
+				pendingRequest.abort();
+				pendingRequest = null;
+			}
 			resetInstallmentBlock($variableSection);
 		});
 
@@ -175,24 +215,8 @@ jQuery(document).ready(function($) {
 					return;
 				}
 
-				var productId = $variableSection.data('product-id');
-
-				$.ajax({
-					url: wcInstallmentAjax.ajaxUrl,
-					type: 'POST',
-					data: {
-						action: 'update_installment_variation',
-						nonce: wcInstallmentAjax.nonce,
-						product_id: productId,
-						price: price
-					},
-					success: function(response) {
-						if (response.success) {
-							updateInstallmentBlock($variableSection, response.data);
-						}
-					}
-				});
-			}, 300);
+				sendInstallmentUpdate(price);
+			}, 250);
 		});
 	}
 });
