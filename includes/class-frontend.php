@@ -218,12 +218,13 @@ class WC_Installment_Frontend {
 
 		usort( $available_months, [ $this, 'sort_months' ] );
 
-		$result_plans      = [];
+		$result_months     = [];
 		$default_total     = 0;
 		$commissions_cache = [];
+		$plan_names_cache  = [];
 
 		foreach ( $available_months as $month ) {
-			$result_plans[ $month ] = [];
+			$result_months[ $month ] = [];
 			foreach ( $plans as $plan_id ) {
 				$key = $plan_id . '_' . $month;
 				if ( ! isset( $months_meta[ $key ] ) ) {
@@ -232,26 +233,32 @@ class WC_Installment_Frontend {
 				if ( ! isset( $commissions_cache[ $plan_id ] ) ) {
 					$commissions_cache[ $plan_id ] = get_post_meta( $plan_id, 'wc_installment_commissions', true );
 				}
+				if ( ! isset( $plan_names_cache[ $plan_id ] ) ) {
+					$plan_post = get_post( $plan_id );
+					$plan_names_cache[ $plan_id ] = $plan_post ? $plan_post->post_title : '';
+				}
 				$commissions = $commissions_cache[ $plan_id ];
 				$commission  = isset( $commissions[ $month ] ) ? floatval( $commissions[ $month ] ) : 0;
 				$total       = $price + ( $price * $commission / 100 );
 				$monthly     = $total / intval( $month );
 
-				$result_plans[ $month ][] = [
-					'plan_id' => $plan_id,
-					'total'   => round( $total, 2 ),
-					'monthly' => round( $monthly, 2 ),
+				$result_months[ $month ][] = [
+					'plan_id'   => $plan_id,
+					'plan_name' => $plan_names_cache[ $plan_id ],
+					'total'     => (int) round( $total ),
+					'monthly'   => (int) round( $monthly ),
 				];
 			}
 		}
 
-		if ( ! empty( $available_months ) && ! empty( $result_plans[ $available_months[0] ] ) ) {
-			$default_total = $result_plans[ $available_months[0] ][0]['total'];
+		if ( ! empty( $available_months ) && ! empty( $result_months[ $available_months[0] ] ) ) {
+			$default_total = $result_months[ $available_months[0] ][0]['total'];
 		}
 
 		wp_send_json_success( [
-			'plans'         => $result_plans,
-			'default_total' => round( $default_total, 2 ),
+			'price'         => (int) round( $price ),
+			'months'        => $result_months,
+			'default_total' => $default_total,
 		] );
 	}
 }

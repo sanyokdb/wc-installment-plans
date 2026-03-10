@@ -68,19 +68,26 @@ jQuery(document).ready(function($) {
 
 	// Обновление блока рассрочки после выбора вариации
 	function updateInstallmentBlock($section, data) {
-		var plans = data.plans;
+		var months = data.months;
 
 		$section.find('.installment-plans-group').each(function() {
 			var month = String($(this).data('month'));
-			if (!plans[month]) {
+			if (!months[month]) {
 				return;
 			}
 
-			$(this).find('.installment-plan').each(function(index) {
-				if (!plans[month][index]) {
+			// Build a lookup map from plan_id to plan data for reliable matching.
+			var planMap = {};
+			for (var i = 0; i < months[month].length; i++) {
+				planMap[String(months[month][i].plan_id)] = months[month][i];
+			}
+
+			$(this).find('.installment-plan').each(function() {
+				var planId = String($(this).data('plan-id'));
+				var planData = planMap[planId];
+				if (!planData) {
 					return;
 				}
-				var planData = plans[month][index];
 				$(this).attr('data-total', planData.total).data('total', planData.total);
 				$(this).attr('data-monthly', planData.monthly).data('monthly', planData.monthly);
 				$(this).find('.installment-plan-price').html(formatPrice(planData.monthly) + '/месяц');
@@ -116,6 +123,7 @@ jQuery(document).ready(function($) {
 		// Кэш последней отправленной цены и контроллер текущего запроса
 		var lastInstallmentPrice = null;
 		var pendingRequest = null;
+		var optionChangeTimer = null;
 
 		// Отправляет AJAX-запрос только если цена изменилась.
 		// Отменяет предыдущий запрос, если он ещё не завершился.
@@ -173,11 +181,24 @@ jQuery(document).ready(function($) {
 			if (!variationPrice) {
 				return;
 			}
+			// Immediately update with the base variation price.
 			sendInstallmentUpdate(variationPrice);
+
+			// After a short delay, re-read the DOM price to catch any addon-plugin
+			// adjustments (e.g. "Соусы", "Степень прожарки") that modify the
+			// displayed price asynchronously after found_variation fires.
+			clearTimeout(optionChangeTimer);
+			optionChangeTimer = setTimeout(function() {
+				var domPrice = readDomVariationPrice();
+				if (domPrice) {
+					sendInstallmentUpdate(domPrice);
+				}
+			}, 400);
 		});
 
 		$form.on('reset_data', function() {
 			lastInstallmentPrice = null;
+			clearTimeout(optionChangeTimer);
 			if (pendingRequest) {
 				pendingRequest.abort();
 				pendingRequest = null;
@@ -185,38 +206,40 @@ jQuery(document).ready(function($) {
 			resetInstallmentBlock($variableSection);
 		});
 
+		// Helper: reads the current displayed variation price from the DOM.
+		// Prefers the sale price (ins > .amount) to avoid picking up
+		// the struck-through regular price when a sale is active.
+		function readDomVariationPrice() {
+			var $wrap = $('.woocommerce-variation-price');
+			if (!$wrap.length || !$wrap.is(':visible')) {
+				return null;
+			}
+			// Prefer ins (sale price), fall back to first .amount
+			var $el = $wrap.find('ins .amount');
+			if (!$el.length) {
+				$el = $wrap.find('.amount').first();
+			}
+			if (!$el.length) {
+				return null;
+			}
+			// Strip all non-digit characters. Works for UZS (integer currency).
+			var digits = $el.text().replace(/[^\d]/g, '');
+			var price = parseInt(digits, 10);
+			return (price && price > 0) ? price : null;
+		}
+
 		// Обработка дополнительных опций (соусы, степень прожарки и т.д.),
 		// которые изменяют отображаемую цену без смены вариации.
 		// Слушаем всю форму, так как поля дополнительных опций могут иметь
 		// разные селекторы в зависимости от используемого плагина.
-		var optionChangeTimer = null;
 		$form.on('change', function() {
 			clearTimeout(optionChangeTimer);
 			optionChangeTimer = setTimeout(function() {
-				// Читаем цену только если блок цены вариации виден
-				// (т.е. вариация уже выбрана и цена обновлена плагинами опций)
-				var $variationPriceWrap = $('.woocommerce-variation-price');
-				if (!$variationPriceWrap.length || !$variationPriceWrap.is(':visible')) {
-					return;
+				var domPrice = readDomVariationPrice();
+				if (domPrice) {
+					sendInstallmentUpdate(domPrice);
 				}
-
-				// Берём первый .amount внутри блока цены вариации
-				// (при наличии старой и новой цены — первый элемент является актуальной)
-				var $priceEl = $variationPriceWrap.find('.amount').first();
-				if (!$priceEl.length) {
-					return;
-				}
-
-				// Парсим цену: убираем все нецифровые символы.
-				// Подходит для UZS и других валют без десятичных знаков.
-				var digits = $priceEl.text().replace(/[^\d]/g, '');
-				var price = parseFloat(digits);
-				if (!price || price <= 0) {
-					return;
-				}
-
-				sendInstallmentUpdate(price);
-			}, 250);
+			}, 400);
 		});
 	}
 });
