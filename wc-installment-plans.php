@@ -30,7 +30,7 @@ function wc_installment_plans_woocommerce_notice() {
 
 // Инициализация плагина
 function wc_installment_plans_init() {
-	if ( ! class_exists( 'WooCommerce' ) ) {
+	if ( ! function_exists( 'WC' ) && ! class_exists( 'WC' ) ) {
 		add_action( 'admin_notices', 'wc_installment_plans_woocommerce_notice' );
 		return;
 	}
@@ -50,7 +50,7 @@ function wc_installment_plans_init() {
 	}
 }
 
-add_action( 'plugins_loaded', 'wc_installment_plans_init' );
+add_action( 'plugins_loaded', 'wc_installment_plans_init', 20 );
 
 function wc_installment_plans_activate() {
 	flush_rewrite_rules();
